@@ -1,0 +1,22 @@
+{
+  "name": "winsock-sniffer",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "axios": "^1.7.7",
+    "express": "^4.21.1",
+    "nodemon": "^3.1.7",
+    "puppeteer": "^23.5.1",
+    "sharp": "^0.33.5",
+    "ssh2": "^1.16.0",
+    "tesseract.js": "^5.1.1",
+    "whois-json": "^2.0.4"
+  }
+}
