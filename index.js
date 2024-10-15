@@ -6,15 +6,22 @@ const path = require('path');
 const dataFilePath = path.join(__dirname, 'data.json');
 
 // Load existing data from data.json if it exists
-let tabData = [];
+let tabDataMap = new Map(); // Map for fast lookup based on unique key (PID + Tab)
 if (fs.existsSync(dataFilePath)) {
   const fileData = fs.readFileSync(dataFilePath, 'utf8');
-  tabData = JSON.parse(fileData || '[]');
+  const tabDataArray = JSON.parse(fileData || '[]');
+
+  // Populate the map with existing data for faster access
+  tabDataArray.forEach(tab => {
+    const tabKey = `${tab.PID}-${tab.Tab}`;
+    tabDataMap.set(tabKey, tab);
+  });
 }
 
 // Function to save data to data.json
 function saveData() {
-  fs.writeFileSync(dataFilePath, JSON.stringify(tabData, null, 2), 'utf8');
+  const tabDataArray = Array.from(tabDataMap.values()); // Convert Map to array
+  fs.writeFileSync(dataFilePath, JSON.stringify(tabDataArray, null, 2), 'utf8');
 }
 
 // Format date for visit times
@@ -59,17 +66,19 @@ function getBrowserTabs() {
                             processName === 'firefox' ? 'Mozilla Firefox' :
                             processName === 'msedge' ? 'Microsoft Edge' : 'Unknown';
 
-        const existingTab = tabData.find(tab => tab.PID === pid && tab.Tab === tabTitle);
+        const tabKey = `${pid}-${tabTitle}`; // Unique key for fast lookup
 
-        if (existingTab) {
-          // Only update the time if the last time is different
+        if (tabDataMap.has(tabKey)) {
+          // If the tab exists, only update if the time is different
+          const existingTab = tabDataMap.get(tabKey);
           const lastRecordedTime = existingTab.time[existingTab.time.length - 1];
+
           if (lastRecordedTime !== currentVisitTime) {
-            existingTab.time.push(currentVisitTime);
+            existingTab.time.push(currentVisitTime); // Push new visit time
           }
         } else {
-          // Add new tab information if it doesn't exist
-          tabData.push({
+          // Add new tab if it doesn't exist
+          tabDataMap.set(tabKey, {
             PID: pid,
             Tab: tabTitle,
             browser: browserName,
@@ -84,8 +93,8 @@ function getBrowserTabs() {
 
     // Clear console for real-time updates and print the tab information
     console.clear();
-    console.log('Updated Browser Tab Information:');
-    console.log(JSON.stringify(tabData, null, 2));
+      console.log('Updated Browser Tab Information in JSON');
+  //  console.log(JSON.stringify(Array.from(tabDataMap.values()), null, 2)); // Convert map to array for display
   });
 }
 
