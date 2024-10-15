@@ -8,19 +8,20 @@ function getActiveWindow() {
   return windowManager.getActiveWindow();
 }
 
-// Capture the top area of the Chrome window
-function captureChromeTopArea(window) {
-  if (!window) return;
+// Capture the top area of the full desktop
+function captureDesktopTopArea() {
+  const screenSize = robot.getScreenSize();
 
-  const bounds = window.getBounds();
-  
-  // Set the height of the top area you want to capture (e.g., 150 pixels)
-  const captureHeight = 150;
+  // Define the height of the top area you want to capture (e.g., 150 pixels)
+  const captureHeight = 110;
 
-  console.log(`Window bounds detected: ${JSON.stringify(bounds)}`);
-  
-  // Capture only the top area defined by Chrome window bounds
-  const img = robot.screen.capture(bounds.x, bounds.y, bounds.width, Math.min(captureHeight, bounds.height));
+  // Set the width to be the full screen width
+  const captureWidth = screenSize.width;
+
+  console.log(`Screen size detected: ${JSON.stringify(screenSize)}`);
+
+  // Capture only a portion of the top area defined by desktop screen bounds
+  const img = robot.screen.capture(0, 0, captureWidth, Math.min(captureHeight, screenSize.height));
 
   const png = new PNG({
     width: img.width,
@@ -30,7 +31,7 @@ function captureChromeTopArea(window) {
   const numPixels = img.width * img.height;
   const imgData = img.image;
 
-  // Process the image data
+  // Process the image data to save it as PNG
   for (let i = 0; i < numPixels; i++) {
     const pngIdx = i * 4;
     const imgIdx = i * 4;
@@ -50,9 +51,9 @@ function captureChromeTopArea(window) {
   // Write the PNG file
   png
     .pack()
-    .pipe(fs.createWriteStream('chrome_top_area_screenshot.png'))
+    .pipe(fs.createWriteStream('screenshot.png'))
     .on('finish', () => {
-      console.log('Screenshot of Chrome top area saved as chrome_top_area_screenshot.png');
+      console.log('Screenshot of desktop top area (full width) saved as desktop_top_area_full_width_screenshot.png');
     });
 }
 
@@ -60,14 +61,14 @@ function captureChromeTopArea(window) {
 function monitorActiveWindow() {
   setInterval(() => {
     const activeWindow = getActiveWindow();
-    
+
     if (activeWindow && activeWindow.path && activeWindow.path.toLowerCase().includes('chrome')) {
       console.log(`Found active Google Chrome window: ${activeWindow.getTitle()}`);
-      captureChromeTopArea(activeWindow);
+      captureDesktopTopArea();
     } else {
       console.log(`Active window is not Chrome. Current window: ${activeWindow ? activeWindow.getTitle() : 'None'}`);
     }
-  }, 2000); // Check every 2 seconds
+  }, 500); // Check every 2 seconds
 }
 
 // Start monitoring the active window
