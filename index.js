@@ -1,196 +1,75 @@
-// const { exec } = require('child_process');
-// const fs = require('fs');
-// const path = require('path');
+const robot = require('robotjs');
+const fs = require('fs');
+const PNG = require('pngjs').PNG;
+const { windowManager } = require('node-window-manager');
 
-// // Path to the data.json file
-// const dataFilePath = path.join(__dirname, 'data.json');
-
-// // Load existing data from data.json if it exists
-// let tabDataMap = new Map(); // Map for fast lookup based on unique key (PID + Tab)
-// if (fs.existsSync(dataFilePath)) {
-//   const fileData = fs.readFileSync(dataFilePath, 'utf8');
-//   const tabDataArray = JSON.parse(fileData || '[]');
-
-//   // Populate the map with existing data for faster access
-//   tabDataArray.forEach(tab => {
-//     const tabKey = `${tab.PID}-${tab.Tab}`;
-//     tabDataMap.set(tabKey, tab);
-//   });
-// }
-
-// // Function to save data to data.json
-// function saveData() {
-//   const tabDataArray = Array.from(tabDataMap.values()); // Convert Map to array
-//   fs.writeFileSync(dataFilePath, JSON.stringify(tabDataArray, null, 2), 'utf8');
-// }
-
-// // Format date for visit times
-// function formatDate(date) {
-//   return date.toLocaleString('en-GB', {
-//     day: '2-digit',
-//     month: 'short',
-//     year: 'numeric',
-//     hour: '2-digit',
-//     minute: '2-digit',
-//     hour12: true
-//   });
-// }
-
-// // Function to get browser tabs and track their time
-// function getBrowserTabs() {
-//   const psCommand = `Get-Process | Where-Object { ($_.MainWindowTitle) -and ($_.ProcessName -match 'chrome|firefox|msedge') } | Select-Object Id, ProcessName, MainWindowTitle`;
-
-//   // Execute PowerShell command
-//   exec(`powershell "${psCommand}"`, (error, stdout, stderr) => {
-//     if (error) {
-//       console.error(`Error executing PowerShell command: ${error.message}`);
-//       return;
-//     }
-
-//     if (stderr) {
-//       console.error(`PowerShell Error: ${stderr}`);
-//       return;
-//     }
-
-//     const lines = stdout.trim().split('\n').slice(1); // Remove header
-//     const currentVisitTime = formatDate(new Date());
-
-//     lines.forEach(line => {
-//       const regex = /(\d+)\s+(\w+)\s+(.+)/; // Regex to parse PID, ProcessName, and Tab title
-//       const match = line.match(regex);
-
-//       if (match) {
-//         const [, pid, processName, tabTitle] = match;
-
-//         const browserName = processName === 'chrome' ? 'Google Chrome' :
-//                             processName === 'firefox' ? 'Mozilla Firefox' :
-//                             processName === 'msedge' ? 'Microsoft Edge' : 'Unknown';
-
-//         const tabKey = `${pid}-${tabTitle}`; // Unique key for fast lookup
-
-//         if (tabDataMap.has(tabKey)) {
-//           // If the tab exists, only update if the time is different
-//           const existingTab = tabDataMap.get(tabKey);
-//           const lastRecordedTime = existingTab.time[existingTab.time.length - 1];
-
-//           if (lastRecordedTime !== currentVisitTime) {
-//             existingTab.time.push(currentVisitTime); // Push new visit time
-//           }
-//         } else {
-//           // Add new tab if it doesn't exist
-//           tabDataMap.set(tabKey, {
-//             PID: pid,
-//             Tab: tabTitle,
-//             browser: browserName,
-//             time: [currentVisitTime]
-//           });
-//         }
-//       }
-//     });
-
-//     // Save the updated data to data.json
-//     saveData();
-
-//     // Clear console for real-time updates and print the tab information
-//     console.clear();
-//       console.log('Updated Browser Tab Information in JSON');
-//   //  console.log(JSON.stringify(Array.from(tabDataMap.values()), null, 2)); // Convert map to array for display
-//   });
-// }
-
-// // Set an interval to check for tab changes every 2 seconds
-// setInterval(getBrowserTabs, 2000);
-
-
-const { exec } = require('child_process');
-const express = require('express');
-
-// Initialize Express server
-const app = express();
-const port = 3000; // You can change the port if needed
-
-// In-memory map to store tab data
-let tabDataMap = new Map();
-
-// Format date for visit times
-function formatDate(date) {
-  return date.toLocaleString('en-GB', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: true
-  });
+// Function to get the active window
+function getActiveWindow() {
+  return windowManager.getActiveWindow();
 }
 
-// Function to get browser tabs and track their time
-function getBrowserTabs() {
-  const psCommand = `Get-Process | Where-Object { ($_.MainWindowTitle) -and ($_.ProcessName -match 'chrome|firefox|msedge') } | Select-Object Id, ProcessName, MainWindowTitle`;
+// Capture the top area of the full desktop
+function captureDesktopTopArea() {
+  const screenSize = robot.getScreenSize();
 
-  // Execute PowerShell command
-  exec(`powershell "${psCommand}"`, (error, stdout, stderr) => {
-    if (error) {
-      console.error(`Error executing PowerShell command: ${error.message}`);
-      return;
-    }
+  // Define the height of the top area you want to capture (e.g., 150 pixels)
+  const captureHeight = 150;
 
-    if (stderr) {
-      console.error(`PowerShell Error: ${stderr}`);
-      return;
-    }
+  // Set the width to be the full screen width
+  const captureWidth = screenSize.width;
 
-    const lines = stdout.trim().split('\n').slice(1); // Remove header
-    const currentVisitTime = formatDate(new Date());
+  console.log(`Screen size detected: ${JSON.stringify(screenSize)}`);
 
-    lines.forEach(line => {
-      const regex = /(\d+)\s+(\w+)\s+(.+)/; // Regex to parse PID, ProcessName, and Tab title
-      const match = line.match(regex);
+  // Capture only a portion of the top area defined by desktop screen bounds
+  const img = robot.screen.capture(0, 0, captureWidth, Math.min(captureHeight, screenSize.height));
 
-      if (match) {
-        const [, pid, processName, tabTitle] = match;
+  const png = new PNG({
+    width: img.width,
+    height: img.height,
+  });
 
-        const browserName = processName === 'chrome' ? 'Google Chrome' :
-                            processName === 'firefox' ? 'Mozilla Firefox' :
-                            processName === 'msedge' ? 'Microsoft Edge' : 'Unknown';
+  const numPixels = img.width * img.height;
+  const imgData = img.image;
 
-        const tabKey = `${pid}-${tabTitle}`; // Unique key for fast lookup
+  // Process the image data to save it as PNG
+  for (let i = 0; i < numPixels; i++) {
+    const pngIdx = i * 4;
+    const imgIdx = i * 4;
 
-        if (tabDataMap.has(tabKey)) {
-          // If the tab exists, only update if the time is different
-          const existingTab = tabDataMap.get(tabKey);
-          const lastRecordedTime = existingTab.time[existingTab.time.length - 1];
+    // RobotJS image data is in BGRA format
+    const blue = imgData[imgIdx];
+    const green = imgData[imgIdx + 1];
+    const red = imgData[imgIdx + 2];
 
-          if (lastRecordedTime !== currentVisitTime) {
-            existingTab.time.push(currentVisitTime); // Push new visit time
-          }
-        } else {
-          // Add new tab if it doesn't exist
-          tabDataMap.set(tabKey, {
-            PID: pid,
-            Tab: tabTitle,
-            browser: browserName,
-            time: [currentVisitTime]
-          });
-        }
-      }
+    // Map to RGBA format expected by PNGJS
+    png.data[pngIdx] = red;
+    png.data[pngIdx + 1] = green;
+    png.data[pngIdx + 2] = blue;
+    png.data[pngIdx + 3] = 255; // Set alpha to fully opaque
+  }
+
+  // Write the PNG file
+  png
+    .pack()
+    .pipe(fs.createWriteStream('screenshot.png'))
+    .on('finish', () => {
+      console.log('Screenshot of desktop top area (full width) saved as desktop_top_area_full_width_screenshot.png');
     });
-
-    // For testing purposes, log data in the server console
-    console.clear();
-    console.log('Updated Browser Tab Information in JSON');
-  });
 }
 
-// Set an interval to check for tab changes every 2 seconds
-setInterval(getBrowserTabs, 2000);
+// Monitor the active window and capture if it's Chrome
+function monitorActiveWindow() {
+  setInterval(() => {
+    const activeWindow = getActiveWindow();
 
-// Define a route to return the tab data in JSON format
-app.get('/tabs', (req, res) => {
-  res.json(Array.from(tabDataMap.values())); // Convert map to array for JSON response
-});
+    if (activeWindow && activeWindow.path && activeWindow.path.toLowerCase().includes('chrome')) {
+      console.log(`Found active Google Chrome window: ${activeWindow.getTitle()}`);
+      captureDesktopTopArea();
+    } else {
+      console.log(`Active window is not Chrome. Current window: ${activeWindow ? activeWindow.getTitle() : 'None'}`);
+    }
+  }, 500); // Check every 2 seconds
+}
 
-// Start the Express server
-app.listen(port, () => {
-  console.log(`Server running at http://localhost:${port}`);
-});
+// Start monitoring the active window
+monitorActiveWindow();
